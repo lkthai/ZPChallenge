@@ -1,0 +1,181 @@
+import urllib2
+import urllib
+import string
+import json
+
+############# Handle commands ######################
+
+def isPosInt(s):
+    '''check if the value enterd is positive integer'''
+    if type(s) == type(1) and s >= 0:
+        return True
+    else:
+        return False
+
+
+
+def isPosFloat(s):
+    '''check if the value entered is postive float'''
+    if type(s) == type(1.5) and s >= 0:
+        return True
+    else:
+        return False
+    
+def handle_command(temp_list):
+    '''handle command'''
+    
+    while True:
+        try:
+            quantity = input('Please enter the desired number of products (greater or equal 2):')
+            if isPosInt(quantity) == True and quantity >= 2:
+                temp_list.append(quantity)
+                break
+            else:
+                print('Invalid input! Please try again!')
+        except NameError:
+            print('Invalid input! Please try again!')
+
+    while True:
+        try:
+            cost = float(input('Please enter the desired dollar amount:'))
+            if isPosFloat(cost) == True:
+                temp_list.append(cost)
+                break
+            else:
+                print('Invalid input! Please try again!')
+        except NameError:
+            print('Invalid input! Please try again!')
+            
+
+
+############# Finding closest matching items ############
+
+def find2(tgt, arr):
+    lowest=[float('inf')]
+    for i in range(0,len(arr)-2):
+        k=len(arr)-1
+        while k>=i:
+            t=tuple(float(arr[x]['price'][1:]) for x in (i, k) )
+            sum_t=sum(t)
+            if sum_t==tgt:
+                return t
+            elif sum_t<sum(lowest):
+                lowest=t
+                
+            if sum_t>0:
+                k-=1
+            else:
+                i+=1                    
+
+    return lowest
+
+
+
+def find(tgt, arr, n):
+    lowest=[float('inf')]
+    for i in range(0,len(arr)-2):
+        
+        j=i+1
+   
+
+        m= range(n-3)
+        l = [x+2 for x in m]
+        
+        k=len(arr)-1
+        
+        while k>=j:
+            t=tuple(float(arr[x]['price'][1:]) for x in [k, j, i]+l)
+            sum_t=sum(t)
+            if sum_t==tgt:
+                return t
+            elif sum_t<sum(lowest):
+                lowest=t
+                
+            if sum_t>0:
+                k-=1
+            else:
+                j+=1                    
+
+    return lowest
+
+
+############# Decode/Encode with json #################
+
+class ZapposException(Exception):
+    pass
+
+
+class Zappos(object):
+    
+    BASE_URL = 'http://api.zappos.com/' 
+
+    def __init__(self, api_key):
+        self.api_key = api_key
+
+    def request(self, path, data={}):
+        data['key'] = self.api_key
+        url = '%s%s?%s' % (self.BASE_URL, path, urllib.urlencode(data))
+        response = urllib.urlopen(url)
+        try:
+            result = json.load(response)
+        except ValueError:
+            raise ZapposException, "Did not receive a json response."
+        if result['statusCode'] != '200':
+            raise ZapposException, "Status code %s" % result['statusCode']
+        return result
+
+    def camel_case(self, value):
+        return string.capwords(value.replace('_', ' ')).replace(' ','')
+
+    def __getattr__(self, name):
+        method = self.camel_case(name)
+
+        def handler(**kwargs):
+            return self.request(method, kwargs)
+
+        handler.method = method
+        return handler
+
+
+def main(temp_list):
+    from config import ZAPPOS_KEY
+    api = Zappos(ZAPPOS_KEY)
+    raw_result = api.search(limit = 100, excludes='["colorId","styleId","productUrl","thumbnailImageUrl","originalPrice","percentOff","brandName"]')
+
+  
+    raw_list = raw_result['results']
+
+   
+    result = ()
+
+    if temp_list[0] == 2:
+        result = find2(temp_list[1], raw_list)
+    else:
+        result = find(temp_list[1], raw_list, temp_list[0])
+
+    final = {}
+
+    for i in raw_list:
+        if float(i['price'][1:]) in result:
+            final[float(i['price'][1:])] =  i['productName']
+
+    print('')
+    print('Our recommendations........')
+
+
+    for key, value in final.iteritems() :
+        print value + ': $' + str(key)
+
+    print('')
+    print 'Total cost: ' + str(sum(result))
+
+    print('')
+    print 'There are some bugs with results...wish I could have more time to work on it ;( '
+
+    
+################ Main #########################
+    
+if __name__ == '__main__':
+    temp_list = []
+    handle_command(temp_list)
+    main(temp_list)    
