@@ -153,24 +153,28 @@ def main(temp_list):
     else:
         result = find(temp_list[1], raw_list, temp_list[0])
 
-    final = {}
+    final = []
 
     for i in raw_list:
         if float(i['price'][1:]) in result:
-            final[float(i['price'][1:])] =  i['productName']
+            final.append((float(i['price'][1:]), i['productName']))
+            #final[float(i['price'][1:])] =  i['productName']
+
+    
 
     print('')
     print('Our recommendations........')
 
 
-    for key, value in final.iteritems() :
-        print value + ': $' + str(key)
+    for i in final:
+        print i[1] + ': $' + str(i[0])
+
 
     print('')
     print 'Total cost: ' + str(sum(result))
 
     print('')
-    print 'There are some bugs with results...wish I could have more time to work on it ;( '
+    print 'There are some bugs with my results...wish I could have more time to work on it ;(( '
 
     
 ################ Main #########################
